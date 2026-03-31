@@ -1,27 +1,67 @@
 name: Update Database
 
+# 触发条件：当 ProjectDATA/data/ 目录下的任何文件被推送时触发工作流
 on:
   push:
     paths:
       - 'ProjectDATA/data/**'
 
 jobs:
-  clean-and-merge:
+  # 定义一个名为 'calculate-revenue' 的作业
+  calculate-revenue:
+    # 在最新的 Ubuntu 虚拟机上运行
     runs-on: ubuntu-latest
+    
     steps:
+      # Step 1: 检出代码仓库
+      # 使用 actions/checkout@v4 将仓库代码下载到工作目录
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Step 2: 设置 Python 3.12 环境
+      # 使用 actions/setup-python@v5 配置 Python 运行时
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
+      # Step 3: 安装项目依赖
+      # 安装 pandas 用于数据处理，flask 用于后续可能的 Web 服务
       - name: Install dependencies
         run: pip install pandas flask
 
-      - name: Run clean_and_merge script
-        run: python ProjectDATA/clean_and_merge.py
+      # Step 4: 运行营业额计算脚本
+      # 执行 calculate_revenue.py，该脚本会：
+      # - 读取 data/ 目录下的订单和客户数据
+      # - 清洗数据、去重
+      # - 按汇率将所有金额转换为人民币
+      # - 计算整体营业额
+      # - 将结果保存到 SQLite 数据库
+      - name: Run revenue calculation script
+        run: python ProjectDATA/calculate_revenue.py
 
-      - name: Verify database updated
-        run: python -c "import sqlite3; conn=sqlite3.connect('ProjectDATA/merged_data.db'); print('Tables:', [t[0] for t in conn.execute(\"SELECT name FROM sqlite_master WHERE type='table'\").fetchall()]); conn.close()"
+      # Step 5: 验证数据库更新结果
+      # 连接到 SQLite 数据库，检查所有表是否正确创建
+      # 并输出总营业额数值进行确认
+      - name: Verify database and print revenue
+        run: |
+          python -c "
+          import sqlite3
+          conn = sqlite3.connect('ProjectDATA/merged_data.db')
+          
+          # 获取所有表名
+          tables = [t[0] for t in conn.execute(\"SELECT name FROM sqlite_master WHERE type='table'\").fetchall()]
+          print('Tables in database:', tables)
+          
+          # 查询总营业额
+          revenue = conn.execute('SELECT total_revenue_cny FROM total_revenue').fetchone()
+          if revenue:
+              print(f'Total Revenue (CNY): {revenue[0]:.2f}')
+          
+          # 查询各地区平均金额
+          print('\\nAverage amount by region:')
+          for row in conn.execute('SELECT region, avg_amount_cny FROM region_summary'):
+              print(f'  {row[0]}: {row[1]:.2f}')
+          
+          conn.close()
+          "
