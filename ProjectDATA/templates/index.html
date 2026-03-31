@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; color: #333; padding: 40px 20px; }
+        h1 { text-align: center; margin-bottom: 32px; font-size: 28px; color: #1a1a2e; }
+        .status { text-align: center; font-size: 13px; color: #888; margin-bottom: 24px; }
+        .status .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #4caf50; margin-right: 4px; vertical-align: middle; }
+        .section { max-width: 900px; margin: 0 auto 40px; background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); overflow: hidden; }
+        .section-title { padding: 16px 24px; background: #1a1a2e; color: #fff; font-size: 18px; font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 24px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; font-weight: 600; font-size: 13px; text-transform: uppercase; color: #666; letter-spacing: 0.5px; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: #f8f9fa; }
+        .amount-cny { font-weight: 600; color: #2e7d32; }
+        .avg-value { font-weight: 700; font-size: 15px; color: #1565c0; }
+        .empty { text-align: center; padding: 40px; color: #aaa; }
+    </style>
+</head>
+<body>
+    <h1>Order Dashboard</h1>
+    <div class="status"><span class="dot"></span>Auto-refreshing every 3 seconds</div>
+
+    <div class="section">
+        <div class="section-title">Merged Orders</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Order ID</th>
+                    <th>Customer</th>
+                    <th>Region</th>
+                    <th>Amount</th>
+                    <th>Currency</th>
+                    <th>Amount (CNY)</th>
+                </tr>
+            </thead>
+            <tbody id="orders-body"></tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Summary &mdash; Average Amount (CNY) by Region</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Region</th>
+                    <th>Avg Amount (CNY)</th>
+                </tr>
+            </thead>
+            <tbody id="summary-body"></tbody>
+        </table>
+    </div>
+
+    <script>
+        async function fetchData() {
+            try {
+                const [ordersRes, summaryRes] = await Promise.all([
+                    fetch('/api/orders'),
+                    fetch('/api/summary')
+                ]);
+                const orders = await ordersRes.json();
+                const summary = await summaryRes.json();
+                renderOrders(orders);
+                renderSummary(summary);
+            } catch (e) {
+                console.error('Failed to fetch data', e);
+            }
+        }
+
+        function renderOrders(orders) {
+            const tbody = document.getElementById('orders-body');
+            if (!orders.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">No data</td></tr>'; return; }
+            tbody.innerHTML = orders.map(o => `
+                <tr>
+                    <td>${o.order_id}</td>
+                    <td>${o.customer_name} (${o.customer_id})</td>
+                    <td>${o.region}</td>
+                    <td>${o.amount}</td>
+                    <td>${o.currency}</td>
+                    <td class="amount-cny">${Number(o.amount_cny).toFixed(2)}</td>
+                </tr>
+            `).join('');
+        }
+
+        function renderSummary(summary) {
+            const tbody = document.getElementById('summary-body');
+            if (!summary.length) { tbody.innerHTML = '<tr><td colspan="2" class="empty">No data</td></tr>'; return; }
+            tbody.innerHTML = summary.map(s => `
+                <tr>
+                    <td>${s.region}</td>
+                    <td class="avg-value">${Number(s.avg_amount_cny).toFixed(2)}</td>
+                </tr>
+            `).join('');
+        }
+
+        fetchData();
+        setInterval(fetchData, 3000);
+    </script>
+</body>
+</html>

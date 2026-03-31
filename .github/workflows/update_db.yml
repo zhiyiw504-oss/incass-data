@@ -1,0 +1,27 @@
+name: Update Database
+
+on:
+  push:
+    paths:
+      - 'ProjectDATA/data/**'
+
+jobs:
+  clean-and-merge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install pandas flask
+
+      - name: Run clean_and_merge script
+        run: python ProjectDATA/clean_and_merge.py
+
+      - name: Verify database updated
+        run: python -c "import sqlite3; conn=sqlite3.connect('ProjectDATA/merged_data.db'); print('Tables:', [t[0] for t in conn.execute(\"SELECT name FROM sqlite_master WHERE type='table'\").fetchall()]); conn.close()"
