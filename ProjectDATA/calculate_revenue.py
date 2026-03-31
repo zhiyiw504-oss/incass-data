@@ -13,8 +13,8 @@ RATES = {"USD": 6.9, "EUR": 7.5, "CNY": 1.0, "JPY": 0.05}
 
 def load_data():
     """读取订单和客户数据文件"""
-    # BUG: 故意拼写错误文件名，导致文件找不到，workflow 会失败
-    orders = pd.read_csv(os.path.join(DATA_DIR, "order_typo.txt"))
+    # FIX: 修正文件名拼写错误
+    orders = pd.read_csv(os.path.join(DATA_DIR, "order.txt"))
     customers = pd.read_csv(os.path.join(DATA_DIR, "customer.txt"))
     return orders, customers
 
